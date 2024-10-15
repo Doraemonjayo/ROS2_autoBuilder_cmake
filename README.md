@@ -1,4 +1,4 @@
-# ROS2_autoBuilder.cmake
+# ROS2_autoBuilder.cmake　日本語は[こちら](https://github.com/Doraemonjayo/ROS2_autoBuilder_cmake/blob/main/README_jp.md)
 
 `ROS2_autoBuilder.cmake` is a CMake file designed to automate the build of ROS2 projects based on the structure of the source directory. By using this CMake file, you can easily handle node builds as well as the generation of message, service, and action interfaces.
 
