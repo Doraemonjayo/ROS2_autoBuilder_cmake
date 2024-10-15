@@ -3,10 +3,6 @@
 # README: https://github.com/Doraemonjayo/ROS2_autoBuildCMake/
 # This CMake file configures the build for the project based on the source directory structure.
 
-# Get the project name from the source directory name
-get_filename_component(PROJECT_NAME_FROM_FOLDER ${CMAKE_SOURCE_DIR} NAME)
-project(${PROJECT_NAME_FROM_FOLDER})
-
 # Add compile options for better code quality
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)
@@ -26,22 +22,25 @@ include_directories(
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
+# Recursively search for node source files
+file(GLOB_RECURSE NODES
+    ${CMAKE_SOURCE_DIR}/nodes/*.c
+    ${CMAKE_SOURCE_DIR}/nodes/*.cpp
+    ${CMAKE_SOURCE_DIR}/nodes/*.cc
+    ${CMAKE_SOURCE_DIR}/nodes/*.cxx
+    ${CMAKE_SOURCE_DIR}/nodes/*.C
+    ${CMAKE_SOURCE_DIR}/nodes/*.cp
+)
+
+set(NODES_BUILT False)
+set(INTERFACES_GENERATED False)
+
 # Function to build ROS2 nodes
 function(ROS2_autoBuildNodes)
     # Find specified dependencies
     foreach(dependency IN LISTS ARGN)
         find_package(${dependency} REQUIRED)
     endforeach()
-
-    # Recursively search for node source files
-    file(GLOB_RECURSE NODES
-        ${CMAKE_SOURCE_DIR}/nodes/*.c
-        ${CMAKE_SOURCE_DIR}/nodes/*.cpp
-        ${CMAKE_SOURCE_DIR}/nodes/*.cc
-        ${CMAKE_SOURCE_DIR}/nodes/*.cxx
-        ${CMAKE_SOURCE_DIR}/nodes/*.C
-        ${CMAKE_SOURCE_DIR}/nodes/*.cp
-    )
 
     # Recursively search for library source files
     file(GLOB_RECURSE LIB_SOURCES
@@ -62,7 +61,11 @@ function(ROS2_autoBuildNodes)
             TARGETS ${NODE_NAME}
             DESTINATION lib/${PROJECT_NAME}
         )
+        if(${INTERFACES_GENERATED})
+            rosidl_target_interfaces(${NODE_NAME} ${PROJECT_NAME} "rosidl_typesupport_cpp")
+        endif()
     endforeach()
+    set(NODES_BUILT True PARENT_SCOPE)
 endfunction()
 
 # Function to generate ROS2 message interfaces
@@ -105,7 +108,15 @@ function(ROS2_autoGenerateInterfaces)
             DEPENDENCIES ${ARGN}
         )
 
+        if(${NODES_BUILT})
+            foreach(NODE ${NODES})
+                get_filename_component(NODE_NAME ${NODE} NAME_WE)
+                rosidl_target_interfaces(${NODE_NAME} ${PROJECT_NAME} "rosidl_typesupport_cpp")
+            endforeach()
+        endif()
+
         # Export runtime dependencies
         ament_export_dependencies(rosidl_default_runtime)
+        set(INTERFACES_GENERATED True PARENT_SCOPE)
     endif()
 endfunction()
