@@ -1,6 +1,6 @@
 # ROS2_autoBuilder.cmake
 # Author: Doraemonjayo
-# README: https://github.com/Doraemonjayo/ROS2_autoBuildCMake/
+# README: https://github.com/Doraemonjayo/ROS2_autoBuilder_cmake
 # This CMake file configures the build for the project based on the source directory structure.
 
 # Add compile options for better code quality
