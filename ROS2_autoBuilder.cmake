@@ -26,6 +26,7 @@ find_package(rosidl_default_generators REQUIRED)
 file(GLOB_RECURSE R2AB_NODES
     ${CMAKE_SOURCE_DIR}/nodes/*.c
     ${CMAKE_SOURCE_DIR}/nodes/*.cpp
+    ${CMAKE_SOURCE_DIR}/nodes/*.c++
     ${CMAKE_SOURCE_DIR}/nodes/*.cc
     ${CMAKE_SOURCE_DIR}/nodes/*.cxx
     ${CMAKE_SOURCE_DIR}/nodes/*.C
@@ -46,6 +47,7 @@ function(ROS2_autoBuildNodes)
     file(GLOB_RECURSE LIB_SOURCES
         ${CMAKE_SOURCE_DIR}/src/*.c
         ${CMAKE_SOURCE_DIR}/src/*.cpp
+        ${CMAKE_SOURCE_DIR}/src/*.c++
         ${CMAKE_SOURCE_DIR}/src/*.cc
         ${CMAKE_SOURCE_DIR}/src/*.cxx
         ${CMAKE_SOURCE_DIR}/src/*.C
