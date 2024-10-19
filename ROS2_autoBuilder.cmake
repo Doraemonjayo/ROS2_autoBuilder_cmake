@@ -5,6 +5,7 @@
 
 # Add compile options for better code quality
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    # Enable all compiler warnings
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
@@ -12,127 +13,121 @@ endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# Set the include directories for building and installation
+# Set include directories for building and installation
 include_directories(
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>  # For building from source
+    $<INSTALL_INTERFACE:include>  # For installation paths
 )
 
 # Find necessary packages
-find_package(ament_cmake REQUIRED)
-find_package(rosidl_default_generators REQUIRED)
+find_package(ament_cmake REQUIRED)  # Required for CMake integration with ROS 2
+find_package(rosidl_default_generators REQUIRED)  # Required for generating ROS 2 message interfaces
 
 # Recursively search for node source files
-file(GLOB_RECURSE R2AB_NODES
-    ${CMAKE_SOURCE_DIR}/nodes/*.c
-    ${CMAKE_SOURCE_DIR}/nodes/*.cpp
-    ${CMAKE_SOURCE_DIR}/nodes/*.c++
-    ${CMAKE_SOURCE_DIR}/nodes/*.cc
-    ${CMAKE_SOURCE_DIR}/nodes/*.cxx
-    ${CMAKE_SOURCE_DIR}/nodes/*.C
-    ${CMAKE_SOURCE_DIR}/nodes/*.cp
+file(GLOB_RECURSE R2AB_NODES_SOURCES
+    ${CMAKE_SOURCE_DIR}/nodes/**/*.c
+    ${CMAKE_SOURCE_DIR}/nodes/**/*.cpp
+    ${CMAKE_SOURCE_DIR}/nodes/**/*.c++
+    ${CMAKE_SOURCE_DIR}/nodes/**/*.cc
+    ${CMAKE_SOURCE_DIR}/nodes/**/*.cxx
+    ${CMAKE_SOURCE_DIR}/nodes/**/*.C
+    ${CMAKE_SOURCE_DIR}/nodes/**/*.cp
 )
 
-set(NODES_BUILT False)
-set(INTERFACES_GENERATED False)
+# Initialize a list to store node executable names
+set(R2AB_NODES)
+foreach(node_file IN LISTS R2AB_NODES_SOURCES)
+    # Extract the base name from the file path
+    get_filename_component(temp_node ${node_file} NAME_WE)
+    # Create an executable for each node source file
+    add_executable(${temp_node} ${node_file})
+    # Append the node name to the list of nodes
+    list(APPEND R2AB_NODES ${temp_node})
+endforeach()
+
+# Recursively search for library source files
+file(GLOB_RECURSE R2AB_LIB_SOURCES
+    ${CMAKE_SOURCE_DIR}/src/**/*.c
+    ${CMAKE_SOURCE_DIR}/src/**/*.cpp
+    ${CMAKE_SOURCE_DIR}/src/**/*.c++
+    ${CMAKE_SOURCE_DIR}/src/**/*.cc
+    ${CMAKE_SOURCE_DIR}/src/**/*.cxx
+    ${CMAKE_SOURCE_DIR}/src/**/*.C
+    ${CMAKE_SOURCE_DIR}/src/**/*.cp
+)
+
+# Add a library if any source files were found
+if(R2AB_LIB_SOURCES)
+    add_library(R2AB_LIB ${R2AB_LIB_SOURCES})  # Create a library from the source files
+endif()
+
+# Link the library to each node if it exists
+foreach(node IN LISTS R2AB_NODES)
+    if(TARGET R2AB_LIB)
+        target_link_libraries(${node} ${R2AB_LIB})  # Link the library to the node
+    endif()
+endforeach()
+
+# Recursively search for message, service, and action files
+file(GLOB_RECURSE R2AB_ABSOLUTE_INTERFACES
+    ${CMAKE_SOURCE_DIR}/msg/**/*.msg
+    ${CMAKE_SOURCE_DIR}/srv/**/*.srv
+    ${CMAKE_SOURCE_DIR}/action/**/*.action
+)
+
+# Initialize a list to store relative interface file paths
+set(R2AB_INTERFACES)
+foreach(absolute_interface IN LISTS R2AB_ABSOLUTE_INTERFACES)
+    # Convert absolute paths to relative paths
+    file(RELATIVE_PATH interface ${CMAKE_SOURCE_DIR} ${absolute_interface})
+    list(APPEND R2AB_INTERFACES ${interface})  # Append the relative path to the interfaces list
+endforeach()
 
 # Function to build ROS2 nodes
 function(ROS2_autoBuildNodes)
     # Find specified dependencies
     foreach(dependency IN LISTS ARGN)
-        find_package(${dependency} REQUIRED)
+        find_package(${dependency} REQUIRED)  # Ensure required packages are found
     endforeach()
-
-    # Recursively search for library source files
-    file(GLOB_RECURSE LIB_SOURCES
-        ${CMAKE_SOURCE_DIR}/src/*.c
-        ${CMAKE_SOURCE_DIR}/src/*.cpp
-        ${CMAKE_SOURCE_DIR}/src/*.c++
-        ${CMAKE_SOURCE_DIR}/src/*.cc
-        ${CMAKE_SOURCE_DIR}/src/*.cxx
-        ${CMAKE_SOURCE_DIR}/src/*.C
-        ${CMAKE_SOURCE_DIR}/src/*.cp
-    )
 
     # Create executables for each node
-    foreach(NODE IN LISTS R2AB_NODES)
-        get_filename_component(NODE_NAME ${NODE} NAME_WE)
-        add_executable(${NODE_NAME} ${NODE} ${LIB_SOURCES})
-        ament_target_dependencies(${NODE_NAME} ${ARGN})
+    foreach(node IN LISTS R2AB_NODES)
+        ament_target_dependencies(${node} ${ARGN})  # Add dependencies to the node
         install(
-            TARGETS ${NODE_NAME}
-            DESTINATION lib/${PROJECT_NAME}
+            TARGETS ${node}  # Specify the target for installation
+            DESTINATION lib/${PROJECT_NAME}  # Installation destination
         )
-        if(${INTERFACES_GENERATED})
-            rosidl_get_typesupport_target(my_typesupport_cpp
-                ${PROJECT_NAME}
-                rosidl_typesupport_cpp
-            )
-                
-            target_link_libraries(${NODE_NAME}
-                ${my_typesupport_cpp}
-            )
-        endif()
     endforeach()
-    set(NODES_BUILT True PARENT_SCOPE)
 endfunction()
 
 # Function to generate ROS2 message interfaces
 function(ROS2_autoGenerateInterfaces)
     # Find specified dependencies
     foreach(dependency IN LISTS ARGN)
-        find_package(${dependency} REQUIRED)
+        find_package(${dependency} REQUIRED)  # Ensure required packages are found
     endforeach()
 
-    # Recursively search for message, service, and action files
-    file(GLOB_RECURSE MSGS ${CMAKE_SOURCE_DIR}/msg/*.msg)
-    file(GLOB_RECURSE SRVS ${CMAKE_SOURCE_DIR}/srv/*.srv)
-    file(GLOB_RECURSE ACTIONS ${CMAKE_SOURCE_DIR}/action/*.action)
-
-    # Convert absolute paths to relative paths
-    set(RELATIVE_MSGS)
-    foreach(msg IN LISTS MSGS)
-        file(RELATIVE_PATH relative_msg ${CMAKE_SOURCE_DIR} ${msg})
-        list(APPEND RELATIVE_MSGS ${relative_msg})
-    endforeach()
-
-    set(RELATIVE_SRVS)
-    foreach(srv IN LISTS SRVS)
-        file(RELATIVE_PATH relative_srv ${CMAKE_SOURCE_DIR} ${srv})
-        list(APPEND RELATIVE_SRVS ${relative_srv})
-    endforeach()
-
-    set(RELATIVE_ACTIONS)
-    foreach(action IN LISTS ACTIONS)
-        file(RELATIVE_PATH relative_action ${CMAKE_SOURCE_DIR} ${action})
-        list(APPEND RELATIVE_ACTIONS ${relative_action})
-    endforeach()
-
-    if(RELATIVE_MSGS OR RELATIVE_SRVS OR RELATIVE_ACTIONS)  # At least one of the file types exists
-        # Generate interfaces for messages, services, and actions
+    # Generate interfaces if any are found
+    if(R2AB_INTERFACES)
         rosidl_generate_interfaces(${PROJECT_NAME}
-            ${RELATIVE_MSGS}
-            ${RELATIVE_SRVS}
-            ${RELATIVE_ACTIONS}
-            DEPENDENCIES ${ARGN}
+            ${R2AB_INTERFACES}  # List of interfaces to generate
+            DEPENDENCIES ${ARGN}  # List of dependencies
         )
 
-        if(${NODES_BUILT})
-            foreach(NODE IN LISTS R2AB_NODES)
-                get_filename_component(NODE_NAME ${NODE} NAME_WE)
-                rosidl_get_typesupport_target(my_typesupport_cpp
-                    ${PROJECT_NAME}
-                    rosidl_typesupport_cpp
-                )
-                
-                target_link_libraries(${NODE_NAME}
-                    ${my_typesupport_cpp}
-                )
-            endforeach()
-        endif()
+        # Get the type support target for the generated interfaces
+        rosidl_get_typesupport_target(my_typesupport_cpp
+            ${PROJECT_NAME}
+            rosidl_typesupport_cpp
+        )
+        
+        # Link the type support to each node
+        foreach(node IN LISTS R2AB_NODES)
+            target_link_libraries(${node}
+                ${my_typesupport_cpp}  # Link type support libraries
+            )
+        endforeach()
 
         # Export runtime dependencies
-        ament_export_dependencies(rosidl_default_runtime)
-        set(INTERFACES_GENERATED True PARENT_SCOPE)
+        ament_export_dependencies(rosidl_default_runtime)  # Ensure runtime dependencies are available
     endif()
 endfunction()
