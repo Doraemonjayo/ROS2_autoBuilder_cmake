@@ -53,7 +53,7 @@ function(ROS2_autoBuildNodes)
     )
 
     # Create executables for each node
-    foreach(NODE ${R2AB_NODES})
+    foreach(NODE IN LISTS R2AB_NODES)
         get_filename_component(NODE_NAME ${NODE} NAME_WE)
         add_executable(${NODE_NAME} ${NODE} ${LIB_SOURCES})
         ament_target_dependencies(${NODE_NAME} ${ARGN})
@@ -116,7 +116,7 @@ function(ROS2_autoGenerateInterfaces)
         )
 
         if(${NODES_BUILT})
-            foreach(NODE ${R2AB_NODES})
+            foreach(NODE IN LISTS R2AB_NODES)
                 get_filename_component(NODE_NAME ${NODE} NAME_WE)
                 rosidl_get_typesupport_target(my_typesupport_cpp
                     ${PROJECT_NAME}
