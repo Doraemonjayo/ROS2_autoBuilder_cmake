@@ -153,7 +153,7 @@ These directories are for storing ROS2 message, service, and action definition f
 Here is a specific example of `CMakeLists.txt`. This file can be used across different ROS2 packages by only changing the dependency package names. The project name is automatically set based on the directory name.
 
 ```cmake
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.16.3)
 
 # Get the project name from the source directory name
 get_filename_component(PROJECT_NAME_FROM_FOLDER ${CMAKE_SOURCE_DIR} NAME)
