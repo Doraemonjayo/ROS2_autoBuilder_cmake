@@ -1,59 +1,71 @@
-# ROS2_autoBuilder.cmake
+# ROS2_autoBuilder.cmake [English version here](https://github.com/Doraemonjayo/ROS2_autoBuilder_cmake/blob/main/README.md)
 
-`ROS2_autoBuilder.cmake` は、ROS2 プロジェクトのビルドをソースディレクトリの構造に基づいて自動化するための CMake ファイルです。この CMake ファイルを使うことで、ノードのビルドやメッセージ、サービス、アクションのインターフェース生成が簡単に行えます。
+`ROS2_autoBuilder.cmake`は、ソースディレクトリの構造に基づいてROS2プロジェクトのビルドを自動化するためのCMakeファイルです。このCMakeファイルを使用することで、ノードのビルドやメッセージ、サービス、アクションインターフェースの生成を簡単に扱うことができます。
 
-## 特徴
-- **ノードの自動ビルド**: `nodes` ディレクトリにある全てのノードソースファイル（`.c`, `.cpp` など）を自動でビルドします。
-- **ライブラリの統合**: `src` ディレクトリにあるライブラリソースを、すべてのノードにリンクします。
-- **メッセージ、サービス、アクションのインターフェース生成**: `msg`, `srv`, `action` ディレクトリ内のファイルからインターフェースを自動生成します。
-- **依存関係の自動検出**: 必要なパッケージを自動で検索し、依存関係を設定します。
+## 機能
+- **自動ノードビルド**: `nodes`ディレクトリ内のすべてのノードソースファイル（`.c`、`.cpp`など）を自動的にビルドします。
+- **ライブラリ統合**: `src`ディレクトリで見つかったすべてのライブラリソースを各ノードにリンクします。
+- **メッセージ、サービス、アクションのインターフェース生成**: `msg`、`srv`、`action`ディレクトリ内のファイルから自動的にインターフェースを生成します。
+- **自動依存関係検出**: 必要なパッケージを自動的に検索し、依存関係を設定します。
 
-## 使用方法
+## 追加機能
+- **カスタムインターフェースの強制的な含有**: `ROS2_useCustomInterfaces_Force`関数を使用すると、カスタムメッセージを外部パッケージから含めることができます。この機能は、外部パッケージからカスタムメッセージを含むことができないROS2 Humbleのバグに対処するために追加されました。
 
-1. `CMakeLists.txt` にこの CMake ファイルを含めます。
+## 使い方
 
-```cmake
-include(ROS2_autoBuilder.cmake)
-```
+1. このCMakeファイルを`CMakeLists.txt`に含めます。
 
-2. ノードをビルドするには、`ROS2_autoBuildNodes()` 関数を使用します。依存するパッケージを引数に渡してください。
+   ```cmake
+   include(ROS2_autoBuilder.cmake)
+   ```
 
-```cmake
-ROS2_autoBuildNodes(<package1> <package2> ...)
-```
+2. ノードをビルドするには、`ROS2_autoBuildNodes()`関数を使用し、必要なパッケージを引数として渡します。
 
-3. メッセージ、サービス、アクションのインターフェースを生成するには、`ROS2_autoGenerateInterfaces()` 関数を使用します。依存するパッケージを引数に渡してください。
+   ```cmake
+   ROS2_autoBuildNodes(<package1> <package2> ...)
+   ```
 
-```cmake
-ROS2_autoGenerateInterfaces(<package1> <package2> ...)
-```
+3. メッセージ、サービス、アクションインターフェースを生成するには、`ROS2_autoGenerateInterfaces()`関数を使用し、必要なパッケージを引数として渡します。
 
-## 具体的なディレクトリ構造とファイル例
-以下のようなディレクトリ構造とファイル配置で動作します。ファイルがない場合は、フォルダは省略することが可能です。
+   ```cmake
+   ROS2_autoGenerateInterfaces(<package1> <package2> ...)
+   ```
+
+4. カスタムインターフェースを強制的に含めるには、`ROS2_useCustomInterfaces_Force()`関数を使用し、必要なパッケージを引数として渡します。
+
+   ```cmake
+   ROS2_useCustomInterfaces_Force(<package1> <package2> ...)
+   ```
+
+### `ROS2_useCustomInterfaces_Force`関数の説明
+`ROS2_useCustomInterfaces_Force`関数は、指定した依存パッケージからカスタムインターフェースを含めるために使用されます。この関数は、各依存パッケージのインクルードディレクトリを設定し、対応するソースファイルを検索し、それらをノードにリンクします。この関数は、外部パッケージからカスタムメッセージを含むことができないというROS2 Humbleのバグに対処するために設計されています。指定された依存パッケージに含まれるすべてのインターフェースソースファイルを収集し、それらをすべてのノードにリンクします。
+
+## 特定のディレクトリ構造とファイル例
+このCMakeファイルは、以下のディレクトリ構造とファイルレイアウトで動作します。フォルダ内にファイルが存在しない場合、そのフォルダは省略できます。
 
 ```
 .
 ├── CMakeLists.txt                      # プロジェクトのCMake設定ファイル
-├── ROS2_autoBuilder.cmake              # このプロジェクトのCMake自動ビルド設定
-├── nodes/                              # ノードのソースファイルを格納するディレクトリ
-│   ├── node1.cpp                       # ノード1（main関数を含む）
-│   └── node2.cpp                       # ノード2（main関数を含む）
-├── src/                                # 共通のライブラリソースを格納するディレクトリ
+├── ROS2_autoBuilder.cmake              # このプロジェクトのCMake自動ビルダー設定
+├── nodes/                              # ノードのソースファイル用ディレクトリ
+│   ├── node1.cpp                       # ノード1（メイン関数を含む）
+│   └── node2.cpp                       # ノード2（メイン関数を含む）
+├── src/                                # すべてのノードで共有されるライブラリソース用ディレクトリ
 │   ├── common_functions.cpp            # ライブラリソースファイル（ノード間で共通）
-│   └── helper.cpp                      # 補助機能用のファイル
-├── include/                            # ヘッダーファイルを格納するディレクトリ
-│   ├── common_functions.hpp            # ライブラリ用のヘッダーファイル
-│   └── helper.hpp                      # 補助機能用のヘッダーファイル
-├── msg/                                # メッセージ定義ファイルを格納するディレクトリ
+│   └── helper.cpp                      # ヘルパー関数用ファイル
+├── include/                            # ヘッダファイル用ディレクトリ
+│   ├── common_functions.hpp            # ライブラリのヘッダファイル
+│   └── helper.hpp                      # ヘルパー関数用ヘッダファイル
+├── msg/                                # メッセージ定義ファイル用ディレクトリ
 │   └── ExampleMessage.msg              # メッセージ定義ファイル
-├── srv/                                # サービス定義ファイルを格納するディレクトリ
+├── srv/                                # サービス定義ファイル用ディレクトリ
 │   └── ExampleService.srv              # サービス定義ファイル
-└── action/                             # アクション定義ファイルを格納するディレクトリ
+└── action/                             # アクション定義ファイル用ディレクトリ
     └── ExampleAction.action            # アクション定義ファイル
 ```
 
 ### `nodes/`
-`nodes` ディレクトリには、**各ノードに対応する実行可能ファイル**のソースファイルを配置します。これらのファイルには `main` 関数が含まれ、それぞれが**独立した ROS2 ノード**として動作します。
+`nodes`ディレクトリには**実行可能ノードのソースファイル**が含まれています。これらのファイルには`main`関数が含まれ、**独立したROS2ノード**として機能します。
 
 - 例: `node1.cpp`
   ```cpp
@@ -86,14 +98,14 @@ ROS2_autoGenerateInterfaces(<package1> <package2> ...)
   ```
 
 ### `src/`
-`src` ディレクトリには、ノード間で共通して使用するライブラリソースを配置します。このディレクトリ内のソースファイルは、ビルドされた**すべてのノードにリンク**されます。
+`src`ディレクトリには、ノード間で共有されるライブラリのソースが含まれています。このディレクトリ内のソースファイルは、ビルドされる**すべてのノード**にリンクされます。
 
 - 例: `common_functions.cpp`
   ```cpp
   #include "common_functions.hpp"
 
   void example_function() {
-      // 共通の処理
+      // 共通処理
   }
   ```
 
@@ -102,12 +114,12 @@ ROS2_autoGenerateInterfaces(<package1> <package2> ...)
   #include "helper.hpp"
 
   void helper_function() {
-      // 補助機能の実装
+      // ヘルパー関数の実装
   }
   ```
 
 ### `include/`
-`include` ディレクトリには、ライブラリソースやノードからインクルードされるヘッダーファイルを配置します。
+`include`ディレクトリには、ライブラリソースとノードによってインクルードされるヘッダファイルが含まれています。
 
 - 例: `common_functions.hpp`
   ```cpp
@@ -120,7 +132,7 @@ ROS2_autoGenerateInterfaces(<package1> <package2> ...)
   ```
 
 ### `msg/`, `srv/`, `action/`
-それぞれ、ROS2 のメッセージ、サービス、アクション定義ファイルを格納するためのディレクトリです。ファイルが存在しない場合はこれらのフォルダを省略できます。
+これらのディレクトリは、ROS2のメッセージ、サービス、アクション定義ファイルを格納するためのものです。これらのフォルダにファイルが存在しない場合は、省略できます。
 
 - 例: `ExampleMessage.msg`
   ```
@@ -149,13 +161,13 @@ ROS2_autoGenerateInterfaces(<package1> <package2> ...)
   string feedback
   ```
 
-## CMakeLists.txt の例
-以下は、CMakeLists.txt の具体例です。このファイルは、依存先のパッケージ名を変更するだけで、異なる ROS2 パッケージに対応できます。プロジェクト名はディレクトリ名に基づいて自動的に設定されます。
+## CMakeLists.txtの例
+以下は、`CMakeLists.txt`の具体的な例です。このファイルは、必要な依存パッケージ名を変更するだけで、異なるROS2パッケージで使用できます。プロジェクト名は、ディレクトリ名に基づいて自動的に設定されます。
 
 ```cmake
 cmake_minimum_required(VERSION 3.16.3)
 
-# Get the project name from the source directory name
+# ソースディレクトリ名からプロジェクト名を取得
 get_filename_component(PROJECT_NAME_FROM_FOLDER ${CMAKE_SOURCE_DIR} NAME)
 project(${PROJECT_NAME_FROM_FOLDER})
 
@@ -164,21 +176,21 @@ include(ROS2_autoBuilder.cmake)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 99)
 
-# ノードの依存パッケージを指定してビルド
+# ビルドに必要なノード依存関係を指定
 ROS2_autoBuildNodes(rclcpp std_msgs)
 
-# メッセージインターフェースの依存パッケージを指定して生成
+# 生成するメッセージインターフェース依存関係を指定
 ROS2_autoGenerateInterfaces(std_msgs)
 
 ament_package()
 ```
 
-この CMakeLists.txt は、依存するパッケージを変更するだけで、異なるパッケージに対応して利用できます。
+この`CMakeLists.txt`は、必要なパッケージ依存関係を変更することで、異なるパッケージで使用できます。
 
-## 注意事項
-- `nodes/` には、各ノードの `main` 関数を含む実行可能ファイルを配置します。
-- `src/` ディレクトリには、すべてのノードにリンクされる共通ライブラリを配置します。
-- `msg/`, `srv/`, `action/` ディレクトリにファイルがない場合は、それらのフォルダを省略できます。
+## 注意
+- `nodes/`には、`main`関数を含む実行ファイルを置いてください。
+- `src/`ディレクトリには、すべてのノードでリンクされる共通ライブラリを置いてください。
+- `msg/`、`srv/`、`action/`ディレクトリにファイルが存在しない場合、これらのフォルダは省略できます。
 
 ## ライセンス
-このプロジェクトは [MIT License](LICENSE) の下でライセンスされています。
+このプロジェクトは[MITライセンス](LICENSE)の下でライセンスされています。
