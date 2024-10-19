@@ -153,7 +153,7 @@ ROS2_autoGenerateInterfaces(<package1> <package2> ...)
 以下は、CMakeLists.txt の具体例です。このファイルは、依存先のパッケージ名を変更するだけで、異なる ROS2 パッケージに対応できます。プロジェクト名はディレクトリ名に基づいて自動的に設定されます。
 
 ```cmake
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.16.3)
 
 # Get the project name from the source directory name
 get_filename_component(PROJECT_NAME_FROM_FOLDER ${CMAKE_SOURCE_DIR} NAME)
