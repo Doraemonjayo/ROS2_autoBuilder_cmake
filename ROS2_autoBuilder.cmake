@@ -23,7 +23,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 # Recursively search for node source files
-file(GLOB_RECURSE R2OB_NODES
+file(GLOB_RECURSE R2AB_NODES
     ${CMAKE_SOURCE_DIR}/nodes/*.c
     ${CMAKE_SOURCE_DIR}/nodes/*.cpp
     ${CMAKE_SOURCE_DIR}/nodes/*.cc
@@ -53,7 +53,7 @@ function(ROS2_autoBuildNodes)
     )
 
     # Create executables for each node
-    foreach(NODE ${R2OB_NODES})
+    foreach(NODE ${R2AB_NODES})
         get_filename_component(NODE_NAME ${NODE} NAME_WE)
         add_executable(${NODE_NAME} ${NODE} ${LIB_SOURCES})
         ament_target_dependencies(${NODE_NAME} ${ARGN})
@@ -116,7 +116,7 @@ function(ROS2_autoGenerateInterfaces)
         )
 
         if(${NODES_BUILT})
-            foreach(NODE ${R2OB_NODES})
+            foreach(NODE ${R2AB_NODES})
                 get_filename_component(NODE_NAME ${NODE} NAME_WE)
                 rosidl_get_typesupport_target(my_typesupport_cpp
                     ${PROJECT_NAME}
