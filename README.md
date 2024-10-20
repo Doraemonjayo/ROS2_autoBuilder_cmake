@@ -83,4 +83,4 @@ ROS2_autoBuildNodes(rclcpp std_msgs)
 ```
 
 ### License
-This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
+This project is licensed under the [MIT License](LICENSE).
