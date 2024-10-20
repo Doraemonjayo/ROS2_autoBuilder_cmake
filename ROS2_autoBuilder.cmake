@@ -1,196 +1,115 @@
-# ROS2_autoBuilder.cmake [日本語はこちら](https://github.com/Doraemonjayo/ROS2_autoBuilder_cmake/blob/main/README_jp.md)
+# ROS2_autoBuilder.cmake
+# Author: Doraemonjayo
+# README: https://github.com/Doraemonjayo/ROS2_autoBuilder_cmake
+# This CMake file configures the build for the project based on the source directory structure.
 
-`ROS2_autoBuilder.cmake` is a CMake file designed to automate the build of ROS2 projects based on the structure of the source directory. By using this CMake file, you can easily handle node builds as well as the generation of message, service, and action interfaces.
+# Add compiler warnings if using GCC or Clang
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
 
-## Features
-- **Automatic Node Build**: Automatically builds all node source files (`.c`, `.cpp`, etc.) in the `nodes` directory.
-- **Library Integration**: Links all library sources found in the `src` directory to each node.
-- **Interface Generation for Messages, Services, and Actions**: Automatically generates interfaces from files in the `msg`, `srv`, and `action` directories.
-- **Automatic Dependency Detection**: Automatically searches for required packages and sets up dependencies.
+# Set C++ and C standard requirements
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_C_STANDARD_REQUIRED ON)
 
-## Additional Features
-- **Forced Inclusion of Custom Interfaces**: The `ROS2_useCustomInterfaces_Force` function allows you to include custom messages from external packages. This functionality was added to address a bug in ROS2 Humble that prevents custom messages from being included from external packages.
+# Set include directories for the project
+set(R2AB_INCLUDE_DIR
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
 
-## Usage
+# Find necessary ROS 2 packages
+find_package(ament_cmake REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
 
-1. Include this CMake file in your `CMakeLists.txt`.
+# Recursively gather node source files into a list
+file(GLOB_RECURSE R2AB_NODES_SOURCES
+    ${CMAKE_SOURCE_DIR}/nodes/*.c
+    ${CMAKE_SOURCE_DIR}/nodes/*.cpp
+    ${CMAKE_SOURCE_DIR}/nodes/*.c++
+    ${CMAKE_SOURCE_DIR}/nodes/*.cc
+    ${CMAKE_SOURCE_DIR}/nodes/*.cxx
+    ${CMAKE_SOURCE_DIR}/nodes/*.C
+    ${CMAKE_SOURCE_DIR}/nodes/*.cp
+)
 
-   ```cmake
-   include(ROS2_autoBuilder.cmake)
-   ```
+# Recursively gather library source files into a list
+file(GLOB_RECURSE R2AB_LIB_SOURCES
+    ${CMAKE_SOURCE_DIR}/src/*.c
+    ${CMAKE_SOURCE_DIR}/src/*.cpp
+    ${CMAKE_SOURCE_DIR}/src/*.c++
+    ${CMAKE_SOURCE_DIR}/src/*.cc
+    ${CMAKE_SOURCE_DIR}/src/*.cxx
+    ${CMAKE_SOURCE_DIR}/src/*.C
+    ${CMAKE_SOURCE_DIR}/src/*.cp
+)
 
-2. To build nodes, use the `ROS2_autoBuildNodes()` function, passing the required packages as arguments.
+# Initialize the list of ROS 2 interfaces (message, service, action files)
+set(R2AB_INTERFACES)
 
-   ```cmake
-   ROS2_autoBuildNodes(<package1> <package2> ...)
-   ```
+# Recursively gather interface files (message, service, action) and store them with relative paths
+file(GLOB_RECURSE R2AB_ABSOLUTE_INTERFACES
+    ${CMAKE_SOURCE_DIR}/msg/*.msg
+    ${CMAKE_SOURCE_DIR}/srv/*.srv
+    ${CMAKE_SOURCE_DIR}/action/*.action
+)
 
-3. To generate message, service, and action interfaces, use the `ROS2_autoGenerateInterfaces()` function, passing the required packages as arguments.
+# Convert absolute paths to relative paths and append to the interface list
+foreach(absolute_interface IN LISTS R2AB_ABSOLUTE_INTERFACES)
+    file(RELATIVE_PATH interface ${CMAKE_SOURCE_DIR} ${absolute_interface})
+    list(APPEND R2AB_INTERFACES ${interface})
+endforeach()
 
-   ```cmake
-   ROS2_autoGenerateInterfaces(<package1> <package2> ...)
-   ```
+# Flag to track if interfaces were generated
+set(R2AB_INTERFACES_GENERATED False)
 
-4. To forcibly include custom interfaces, use the `ROS2_useCustomInterfaces_Force()` function, passing the required packages as arguments.
+# Function to auto-generate interfaces (messages, services, actions) and their dependencies
+function(ROS2_autoGenerateInterfaces)
+    # Search for and include any dependency packages specified
+    foreach(dependency IN LISTS ARGN)
+        find_package(${dependency} REQUIRED)
+    endforeach()
 
-   ```cmake
-   ROS2_useCustomInterfaces_Force(<package1> <package2> ...)
-   ```
+    # If any interfaces exist, generate them
+    if(R2AB_INTERFACES)
+        rosidl_generate_interfaces(${PROJECT_NAME}
+            ${R2AB_INTERFACES}
+            DEPENDENCIES ${ARGN}
+        )
+        # Export dependencies for the generated interfaces
+        ament_export_dependencies(rosidl_default_runtime)
+        set(R2AB_INTERFACES_GENERATED True PARENT_SCOPE)  # Set flag to true in the parent scope
+    endif()
+endfunction()
 
-### Explanation of `ROS2_useCustomInterfaces_Force` Function
-The `ROS2_useCustomInterfaces_Force` function is used to include custom interfaces from specified dependency packages. It sets the include directories for each dependency package, searches for the corresponding source files, and links them to the nodes. This function is designed to address a bug in ROS2 Humble that prevents custom messages from being included from external packages. It collects all interface source files contained in the specified dependency packages and links them to all nodes.
+# Function to automatically build nodes (executables)
+function(ROS2_autoBuildNodes)
+    # If interfaces were generated, get the typesupport target
+    if(${R2AB_INTERFACES_GENERATED})
+        rosidl_get_typesupport_target(my_typesupport_cpp
+            ${PROJECT_NAME}
+            rosidl_typesupport_cpp
+        )
+    endif()
 
-## Specific Directory Structure and File Examples
-This CMake file works with the following directory structure and file layout. If there are no files in a folder, that folder can be omitted.
+    # Search for and include any dependency packages specified
+    foreach(dependency IN LISTS ARGN)
+        find_package(${dependency} REQUIRED)
+    endforeach()
 
-```
-.
-├── CMakeLists.txt                      # CMake configuration file for the project
-├── ROS2_autoBuilder.cmake              # CMake auto-builder configuration for this project
-├── nodes/                              # Directory for node source files
-│   ├── node1.cpp                       # Node 1 (includes the main function)
-│   └── node2.cpp                       # Node 2 (includes the main function)
-├── src/                                # Directory for common library sources
-│   ├── common_functions.cpp            # Library source file (common between nodes)
-│   └── helper.cpp                      # File for helper functions
-├── include/                            # Directory for header files
-│   ├── common_functions.hpp            # Header file for library
-│   └── helper.hpp                      # Header file for helper functions
-├── msg/                                # Directory for message definition files
-│   └── ExampleMessage.msg              # Message definition file
-├── srv/                                # Directory for service definition files
-│   └── ExampleService.srv              # Service definition file
-└── action/                             # Directory for action definition files
-    └── ExampleAction.action            # Action definition file
-```
-
-### `nodes/`
-The `nodes` directory contains **source files for executable nodes**. These files include the `main` function and operate as **independent ROS2 nodes**.
-
-- Example: `node1.cpp`
-  ```cpp
-  #include "rclcpp/rclcpp.hpp"
-  #include "std_msgs/msg/string.hpp"
-
-  int main(int argc, char **argv) {
-      rclcpp::init(argc, argv);
-      auto node = rclcpp::Node::make_shared("node1");
-      RCLCPP_INFO(node->get_logger(), "Hello from Node 1!");
-      rclcpp::spin(node);
-      rclcpp::shutdown();
-      return 0;
-  }
-  ```
-
-- Example: `node2.cpp`
-  ```cpp
-  #include "rclcpp/rclcpp.hpp"
-  #include "std_msgs/msg/string.hpp"
-
-  int main(int argc, char **argv) {
-      rclcpp::init(argc, argv);
-      auto node = rclcpp::Node::make_shared("node2");
-      RCLCPP_INFO(node->get_logger(), "Hello from Node 2!");
-      rclcpp::spin(node);
-      rclcpp::shutdown();
-      return 0;
-  }
-  ```
-
-### `src/`
-The `src` directory contains library sources that are shared among nodes. Source files in this directory are linked to **all nodes** being built.
-
-- Example: `common_functions.cpp`
-  ```cpp
-  #include "common_functions.hpp"
-
-  void example_function() {
-      // Common processing
-  }
-  ```
-
-- Example: `helper.cpp`
-  ```cpp
-  #include "helper.hpp"
-
-  void helper_function() {
-      // Implementation of helper functions
-  }
-  ```
-
-### `include/`
-The `include` directory contains header files that are included by the library sources and nodes.
-
-- Example: `common_functions.hpp`
-  ```cpp
-  void example_function();
-  ```
-
-- Example: `helper.hpp`
-  ```cpp
-  void helper_function();
-  ```
-
-### `msg/`, `srv/`, `action/`
-These directories are for storing ROS2 message, service, and action definition files. If there are no files in these folders, they can be omitted.
-
-- Example: `ExampleMessage.msg`
-  ```
-  string data
-  ```
-
-- Example: `ExampleService.srv`
-  ```
-  int32 a
-  int32 b
-  ---
-  int32 sum
-  ```
-
-- Example: `ExampleAction.action`
-  ```
-  # Goal
-  int32 order
-
-  ---
-  # Result
-  string result
-
-  ---
-  # Feedback
-  string feedback
-  ```
-
-## Example of CMakeLists.txt
-Here is a specific example of `CMakeLists.txt`. This file can be used across different ROS2 packages by only changing the dependency package names. The project name is automatically set based on the directory name.
-
-```cmake
-cmake_minimum_required(VERSION 3.16.3)
-
-# Get the project name from the source directory name
-get_filename_component(PROJECT_NAME_FROM_FOLDER ${CMAKE_SOURCE_DIR} NAME)
-project(${PROJECT_NAME_FROM_FOLDER})
-
-include(ROS2_autoBuilder.cmake)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_C_STANDARD 99)
-
-# Specify node dependencies for building
-ROS2_autoBuildNodes(rclcpp std_msgs)
-
-# Specify message interface dependencies for generation
-ROS2_autoGenerateInterfaces(std_msgs)
-
-ament_package()
-```
-
-This `CMakeLists.txt` can be used across different packages simply by changing the required package dependencies.
-
-## Note
-- Place executable files containing the `main` function in `nodes/`.
-- Place common libraries linked to all nodes in the `src/` directory.
-- If there are no files in `msg/`, `srv/`, or `action/` directories, those folders can be omitted.
-
-## License
-This project is licensed under the [MIT License](LICENSE).
+    # Loop over each node source file and create an executable for each
+    foreach(node_source IN LISTS R2AB_NODES_SOURCES)
+        get_filename_component(node ${node_source} NAME_WE)  # Get the base name of the node
+        add_executable(${node} ${node_source} ${R2AB_LIB_SOURCES})  # Add executable for the node
+        target_include_directories(${node} PUBLIC ${R2AB_INCLUDE_DIR})  # Set include directories
+        ament_target_dependencies(${node} ${ARGN})  # Set dependencies for the node
+        if(${R2AB_INTERFACES_GENERATED})
+            target_link_libraries(${node} ${my_typesupport_cpp})  # Link typesupport if interfaces were generated
+        endif()
+        # Install the built node to the appropriate location
+        install(
+            TARGETS ${node}
+            DESTINATION lib/${PROJECT_NAME}
+        )
+    endforeach()
+endfunction()
